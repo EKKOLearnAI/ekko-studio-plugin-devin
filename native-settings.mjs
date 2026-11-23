@@ -94,9 +94,17 @@ function stringMap(value) {
   return object(value) && Object.values(value).every(item => typeof item === 'string')
 }
 
+function mcpUrl(value) {
+  if (typeof value !== 'string' || !/^https?:\/\/[^/\\\s?#]/i.test(value) ||
+      /[\s\\\p{Cc}]/u.test(value)) return undefined
+  try { return new URL(value) }
+  catch { return undefined }
+}
+
 function validateServer(value) {
   const stdio = typeof value.command === 'string' && Boolean(value.command.trim())
-  const remote = typeof value.url === 'string' && /^https?:\/\/\S+$/i.test(value.url)
+  const remote = Boolean(mcpUrl(value.url))
+  if (Object.hasOwn(value, 'url') && !remote) throw new Error('Provide a valid HTTP(S) URL for an MCP server.')
   if (stdio === remote || (stdio && (Object.hasOwn(value, 'url') || value.transport !== undefined && value.transport !== 'stdio')) ||
       (remote && (Object.hasOwn(value, 'command') || value.transport !== undefined && !['http', 'sse'].includes(value.transport)))) {
     throw new Error('Provide a stdio command, or an HTTP(S) URL with http or sse transport.')
@@ -132,17 +140,59 @@ function mcpSummary(value) {
   const invalid = { transport: 'unknown', target: '' }
   if (typeof value?.url === 'string') {
     if (value.command !== undefined || value.transport !== undefined && !['http', 'sse'].includes(value.transport)) return invalid
-    try {
-      const address = new URL(value.url)
-      if (!['https:', 'http:'].includes(address.protocol)) return invalid
-      return { transport: value.transport === 'sse' ? 'sse' : 'http', target: address.origin.slice(0, 1024) }
-    } catch { return invalid }
+    const address = mcpUrl(value.url)
+    return address ? { transport: value.transport === 'sse' ? 'sse' : 'http', target: address.origin.slice(0, 1024) } : invalid
   }
   if (typeof value?.command === 'string' && value.command.trim() && (value.transport === undefined || value.transport === 'stdio')) {
     const target = value.command.split(/[\\/]/).at(-1)
     return { transport: 'stdio', target: /^[a-z0-9_.+-]{1,120}$/i.test(target) ? target : '' }
   }
   return invalid
+}
+
+const booleanMcpFlags = new Set(['-y', '--yes', '--stdio', '--verbose', '--quiet'])
+const sensitiveWord = /(?:token|secret|passw|passwd|credential|authorization|cookie|bearer|signature|api.?key|session.?key|private.?key|^(?:auth|key|sig|session|signed)$)/i
+
+function plainSearchTerm(value) {
+  return /^[a-z0-9][a-z0-9._-]{0,31}$/i.test(value) && !sensitiveWord.test(value) &&
+    !/^[a-f0-9]{16,}$/i.test(value) && !/^(?:gh[pousr]_|sk[-_]|xox[a-z]-|eyJ)/.test(value)
+}
+
+function protectedWords(value) {
+  const words = new Set()
+  mapSecrets(value, (item, _path, secret) => {
+    if (!secret || typeof item !== 'string') return
+    for (const word of item.toLowerCase().match(/[a-z0-9._-]+/g) ?? []) words.add(word)
+  })
+  return words
+}
+
+function mcpMatches(value, query) {
+  const summary = mcpSummary(value)
+  if (summary.transport === 'stdio' && Array.isArray(value.args)) {
+    const protectedText = protectedWords(value)
+    let optionValue = false
+    for (const arg of value.args) {
+      if (typeof arg !== 'string') continue
+      if (arg.startsWith('-')) {
+        // An unfamiliar switch may take credentials. Never index its value.
+        optionValue = arg !== '--' && !booleanMcpFlags.has(arg)
+      } else if (!optionValue && plainSearchTerm(arg)) {
+        const term = arg.toLowerCase()
+        if (term.includes(query) && !protectedText.has(term)) return true
+      }
+    }
+  }
+  if (summary.transport === 'http' || summary.transport === 'sse') {
+    // The editor masks URLs with credentials, queries, or fragments as a whole.
+    if (isSecret('url', value.url)) return false
+    const { pathname } = mcpUrl(value.url)
+    const parts = pathname.split('/').filter(Boolean)
+    if (!parts.length || !parts.every(plainSearchTerm) || !pathname.toLowerCase().includes(query)) return false
+    const protectedText = protectedWords(value)
+    return parts.every(part => !protectedText.has(part.toLowerCase()))
+  }
+  return false
 }
 
 function validatePatch(patch) {
@@ -267,6 +317,10 @@ export function nativeSettings(root) {
     })
   }
 
+  function checkMcpRevision(actual, expected) {
+    if (expected !== undefined && actual !== expected) throw new Error('MCP configuration changed. Refresh the list and try again.')
+  }
+
   return {
     async 'list-skills'() {
       const path = join(root, 'skills')
@@ -304,12 +358,24 @@ export function nativeSettings(root) {
       await checkMcpLayout()
       const { text, revision } = await read(mcp)
       const servers = Object.entries(serversIn(text)).sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, value]) => ({ name, enabled: object(value) && value.disabled !== true, ...mcpSummary(value) }))
+        .map(([name, value]) => {
+          const summary = mcpSummary(value)
+          return { name, enabled: summary.transport !== 'unknown' && value.disabled !== true, ...summary }
+        })
       return { path: join(root, ...mcp), servers, revision }
     },
-    async 'get-mcp'({ name }) {
+    async 'search-mcp'({ query, revision: expected }) {
       await checkMcpLayout()
       const { text, revision } = await read(mcp)
+      checkMcpRevision(revision, expected)
+      const term = query.trim().toLowerCase()
+      const names = term ? Object.entries(serversIn(text)).filter(([, value]) => mcpMatches(value, term)).map(([name]) => name) : []
+      return { names }
+    },
+    async 'get-mcp'({ name, revision: expected }) {
+      await checkMcpLayout()
+      const { text, revision } = await read(mcp)
+      checkMcpRevision(revision, expected)
       const servers = serversIn(text)
       const value = Object.hasOwn(servers, serverName(name)) ? servers[name] : undefined
       const content = value === undefined ? '' : json(mapSecrets(value, (item, path, secret) => secret ? mask : item))
@@ -332,7 +398,9 @@ export function nativeSettings(root) {
     },
     'set-mcp-enabled'(input, signal) {
       return changeMcp(input, signal, (source, path, current) => {
-        if (!object(current)) throw new Error('MCP entry is missing or invalid. Reload the list.')
+        if (!object(current) || input.enabled && mcpSummary(current).transport === 'unknown') {
+        throw new Error('MCP entry is missing or invalid. Reload the list.')
+      }
         return edits(source, [...path, 'disabled'], input.enabled ? undefined : true)
       })
     },

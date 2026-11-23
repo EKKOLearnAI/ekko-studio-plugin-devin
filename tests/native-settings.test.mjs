@@ -197,3 +197,71 @@ test('Skill structured editing preserves YAML comments, custom keys and the raw 
   await store['save-skill']({ name, revision: raw.revision, content: body })
   assert.equal((await store['get-skill']({ name })).content, body)
 })
+
+test('D1: an MCP editor can only open and save against its displayed revision', async t => {
+  const { store, root } = await fixture(t)
+  const name = 'review-local'
+  const config = { command: 'node', args: ['original'] }
+  await store['save-mcp']({ name, content: JSON.stringify(config), revision: '', create: true })
+  const first = await store['list-mcp']()
+  const editor = await store['get-mcp']({ name, revision: first.revision })
+  await store['set-mcp-enabled']({ name, revision: first.revision, enabled: false })
+  const disabledFile = await readFile(join(root, 'mcp_config.json'), 'utf8')
+  await assert.rejects(store['get-mcp']({ name, revision: first.revision }), /Refresh the list/)
+  await assert.rejects(store['save-mcp']({
+    name, revision: editor.revision, content: JSON.stringify({ ...config, args: ['changed'] }), create: false,
+  }), /changed/)
+  assert.equal(await readFile(join(root, 'mcp_config.json'), 'utf8'), disabledFile)
+  const fresh = await store['list-mcp']()
+  assert.deepEqual(JSON.parse((await store['get-mcp']({ name, revision: fresh.revision })).content),
+    { ...config, disabled: true })
+})
+
+test('D2: MCP URL validation rejects malformed addresses without changing the file', async t => {
+  const { store, root } = await fixture(t)
+  const name = 'remote'
+  const valid = { url: 'https://[::1]:8443/mcp/file%20name?fixture=1', transport: 'sse' }
+  await store['save-mcp']({ name, content: JSON.stringify(valid), revision: '', create: true })
+  const { revision } = await store['list-mcp']()
+  const file = join(root, 'mcp_config.json')
+  const before = await readFile(file, 'utf8')
+  for (const url of ['https://%', 'https:///extra', 'https://host:-5', 'http://[::1', 'https://exam ple', 'https://host\n/path', 'file:///test', 123]) {
+    await assert.rejects(store['save-mcp']({ name: 'invalid', content: JSON.stringify({ url }), revision, create: true }),
+      /valid HTTP\(S\) URL/)
+  }
+  assert.equal(await readFile(file, 'utf8'), before)
+  assert.match(before, /file%20name/)
+  await writeFile(file, '{"mcpServers":{"invalid":{"url":"https://%"}}}')
+  const legacy = await store['list-mcp']()
+  assert.deepEqual(legacy.servers, [{ name: 'invalid', enabled: false, transport: 'unknown', target: '' }])
+  await assert.rejects(store['set-mcp-enabled']({ name: 'invalid', revision: legacy.revision, enabled: true }), /invalid/)
+})
+
+test('D5: MCP search matches harmless arguments and paths without returning configuration values', async t => {
+  const { store, root } = await fixture(t)
+  await mkdir(root, { recursive: true })
+  const file = join(root, 'mcp_config.json')
+  await writeFile(file, JSON.stringify({ mcpServers: {
+    stdio: { command: 'node', args: ['arg-needle-204', 'fixture-env-value', '--token', 'ordinary-option-value', 'secondary-option-value', '--unknown', 'unknown-option-value',
+      '--bearer=inline-option-value', '--', 'after-separator', 'ghp_literal-fixture'],
+      env: { API_KEY: 'fixture-env-value' } },
+    remote: { url: 'https://example.invalid/mcp/path-needle-204', headers: { Authorization: 'Bearer fixture-header-value' } },
+    signed: { url: 'https://example.invalid/mcp/signed-url-path?k=fixture-query-value' },
+    auth: { url: 'https://fixture-user:fixture-pass@example.invalid/auth-url-path' },
+    private: { url: 'https://example.invalid/api/token/private-segment' },
+  } }))
+  const { revision } = await store['list-mcp']()
+  const before = await readFile(file, 'utf8')
+  const search = query => store['search-mcp']({ query, revision })
+  assert.deepEqual(await search('ARG-NEEDLE-204'), { names: ['stdio'] })
+  assert.deepEqual(await search('after-separator'), { names: ['stdio'] })
+  assert.deepEqual(await search('/mcp/path-needle-204'), { names: ['remote'] })
+  for (const needle of ['ordinary-option-value', 'secondary-option-value', 'unknown-option-value', 'inline-option-value', 'literal-fixture',
+    'fixture-env-value', 'fixture-header-value', 'fixture-query-value', 'signed-url-path', 'auth-url-path',
+    'fixture-pass', 'private-segment', '••••••••']) {
+    assert.deepEqual(await search(needle), { names: [] })
+  }
+  assert.equal(await readFile(file, 'utf8'), before)
+  await writeFile(file, before + '\n')
+  await assert.rejects(search('arg-needle-204'), /Refresh the list/)
+})

@@ -64,7 +64,7 @@ const themeStyles = `
   .dv-skills-layout{display:flex;flex:1;min-width:0;min-height:0}
   .dv-skills-sidebar{display:flex;flex-direction:column;width:280px;flex-shrink:0;min-height:0;border-inline-end:var(--dv-border);overflow:auto}
   .dv-skills-sidebar .dv-source-info{padding:12px;border-top:var(--dv-border);margin-top:auto}
-  .dv-skills-sidebar .dv-message{padding:12px}
+  .dv-skills .dv-skill-status{padding:12px 20px}.dv-skills .dv-skill-status:empty{display:none}
   .dv-skills .dv-items{display:flex;flex-direction:column;gap:2px;padding:8px}
   .dv-skill-group{margin:8px 4px 4px;font-size:12px;font-weight:500;color:var(--text-muted)}
   .dv-manager .dv-skill-select{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;text-align:start;padding:8px 12px;border-color:transparent;background:transparent;white-space:normal}
@@ -281,6 +281,10 @@ async function mountResources(root, ctx, t) {
   let baseline = ''
   let skillDocument
   let detailGeneration = 0
+  let searchGeneration = 0
+  let searchTimer
+  let searching = false
+  let supplementalMatches = new Set()
 
   const container = element('section', '', 'dv-manager' + (skills ? ' dv-skills' : ''))
   const header = element('header', '', 'dv-page-header')
@@ -288,6 +292,7 @@ async function mountResources(root, ctx, t) {
   const toolbar = element('div', '', 'dv-toolbar')
   const search = labelledInput('input', skills ? t.search : t.searchMcp)
   search.type = 'search'
+  search.maxLength = 1024
   search.placeholder = search.getAttribute('aria-label')
   const add = button(skills ? t.addSkill : t.addMcp, () => openEditor(), 'primary')
   const refresh = button(t.refresh, () => operation(load), 'quiet')
@@ -308,15 +313,17 @@ async function mountResources(root, ctx, t) {
   if (!skills) source.append(element('p', t.mcpAuth))
   const status = notice(t.loading)
   const list = element('div', '', 'dv-items')
+  const searchStatus = notice()
   const detail = element('section', '', 'dv-skill-detail')
   const counts = []
   if (skills) {
     const layout = element('div', '', 'dv-skills-layout')
     const sidebar = element('aside', '', 'dv-skills-sidebar')
     sidebar.setAttribute('aria-label', t.list)
-    sidebar.append(status, list, source)
+    sidebar.append(list, source)
     layout.append(sidebar, detail)
-    body.append(layout)
+    status.classList.add('dv-skill-status')
+    body.append(status, layout)
   } else {
     const stats = element('div', '', 'dv-stats')
     for (const [label, decoration] of [[t.total, ''], [t.enabled, ' active'], [t.disabled, '']]) {
@@ -326,7 +333,7 @@ async function mountResources(root, ctx, t) {
       stat.append(element('span', label), count)
       stats.append(stat)
     }
-    body.append(status, stats, toolbar, source, list)
+    body.append(status, stats, toolbar, source, searchStatus, list)
   }
 
   const dialog = element('dialog', '', 'dv-dialog')
@@ -365,6 +372,7 @@ async function mountResources(root, ctx, t) {
   root.append(container)
   ctx.lifecycle.add(() => {
     disposed = true
+    clearTimeout(searchTimer)
     dialog.close()
   })
   dialog.oncancel = event => {
@@ -378,7 +386,7 @@ async function mountResources(root, ctx, t) {
       saveEditor()
     }
   }
-  search.oninput = renderList
+  search.oninput = updateSearch
   if (skills) option.onchange = changeSkillMode
 
   const rpc = (method, input = null) => ctx.rpc.call(method, input)
@@ -397,13 +405,13 @@ async function mountResources(root, ctx, t) {
     for (const control of container.querySelectorAll('.dv-items button,.dv-skill-detail button')) control.disabled = value || control.dataset.unavailable === 'true'
   }
 
-  async function operation(action, success = '') {
+  async function operation(action) {
     if (busy || disposed) return
     setBusy(true)
     announce(message(), loaded ? '' : t.loading)
     try {
-      await action()
-      if (!disposed && success) announce(message(), success)
+      const success = await action()
+      if (!disposed) announce(message(), success ?? '')
     } catch (error) {
       if (!disposed) announce(message(), error.message, true)
     } finally {
@@ -424,7 +432,31 @@ async function mountResources(root, ctx, t) {
       }
     }
     loaded = true
+    updateSearch()
+  }
+
+  function updateSearch() {
+    const generation = ++searchGeneration
+    clearTimeout(searchTimer)
+    const query = search.value.trim()
+    searching = !skills && loaded && items.length > 0 && Boolean(query)
+    supplementalMatches.clear()
+    announce(searchStatus, '')
     renderList()
+    if (!searching) return
+    searchTimer = setTimeout(async () => {
+      try {
+        const result = await rpc('search-mcp', { query, revision: listRevision })
+        if (!disposed && generation === searchGeneration) supplementalMatches = new Set(result.names)
+      } catch (error) {
+        if (!disposed && generation === searchGeneration) announce(searchStatus, error.message, true)
+      } finally {
+        if (!disposed && generation === searchGeneration) {
+          searching = false
+          renderList()
+        }
+      }
+    }, 150)
   }
 
   function readSkill(item) {
@@ -476,7 +508,7 @@ async function mountResources(root, ctx, t) {
   async function openEditor(item = null) {
     await operation(async () => {
       let value
-      if (item) value = skills ? await readSkill(item) : await rpc('get-mcp', { name: item.name })
+      if (item) value = skills ? await readSkill(item) : await rpc('get-mcp', { name: item.name, revision: listRevision })
       if (disposed) return
       if (item && !skills && !value.content) throw new Error(t.noMatches)
       editing = item
@@ -495,9 +527,9 @@ async function mountResources(root, ctx, t) {
         setSkillMode(rawOnly)
       } else {
         const config = item ? JSON.parse(value.content) : { command: 'npx', args: [] }
+        option.checked = config?.disabled !== true
         if (config && typeof config === 'object' && !Array.isArray(config)) delete config.disabled
         content.value = JSON.stringify(config, null, 2)
-        option.checked = item?.enabled ?? true
         baseline = draft()
       }
       dialog.showModal()
@@ -527,7 +559,8 @@ async function mountResources(root, ctx, t) {
       if (skills) selected = input.name
       closeEditor()
       await load()
-    }, t.saved)
+      return t.saved
+    })
   }
 
   function itemActions(item) {
@@ -540,9 +573,10 @@ async function mountResources(root, ctx, t) {
       if (disposed) return
       await rpc('remove-' + kind, { name: item.name, revision })
       await load()
-      if (!disposed) announce(status, t.deleted)
+      return t.deleted
     }), 'quiet danger')
     remove.setAttribute('aria-label', t.remove + ' ' + item.name)
+    edit.disabled = remove.disabled = busy
     actions.append(edit, remove)
     return actions
   }
@@ -616,8 +650,10 @@ async function mountResources(root, ctx, t) {
       const toggle = button('', () => operation(async () => {
         await rpc('set-mcp-enabled', { name: item.name, revision: listRevision, enabled: !item.enabled })
         await load()
-      }, t.saved), 'dv-switch')
+        return t.saved
+      }), 'dv-switch')
       if (item.transport === 'unknown') toggle.dataset.unavailable = 'true'
+      toggle.disabled = busy || item.transport === 'unknown'
       toggle.setAttribute('role', 'switch')
       toggle.setAttribute('aria-checked', String(item.enabled))
       toggle.setAttribute('aria-label', (item.enabled ? t.disable : t.enable) + ' ' + item.name)
@@ -631,10 +667,10 @@ async function mountResources(root, ctx, t) {
   function renderList() {
     list.replaceChildren()
     const query = search.value.trim().toLocaleLowerCase()
-    const filtered = items.filter(item => [item.name, item.description, item.transport, item.target]
-      .filter(Boolean).join(' ').toLocaleLowerCase().includes(query))
+    const filtered = items.filter(item => supplementalMatches.has(item.name) ||
+      [item.name, item.description, item.transport, item.target].filter(Boolean).join(' ').toLocaleLowerCase().includes(query))
     if (!filtered.length) {
-      if (loaded) list.append(element('p', items.length ? t.noMatches : skills ? t.emptySkills : t.emptyMcp, 'dv-empty'))
+      if (loaded && !searching) list.append(element('p', items.length ? t.noMatches : skills ? t.emptySkills : t.emptyMcp, 'dv-empty'))
       if (skills) {
         container.classList.remove('dv-show-detail')
         renderDetail(null)

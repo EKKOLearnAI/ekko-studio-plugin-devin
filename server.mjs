@@ -188,7 +188,7 @@ export function apply(ctx) {
         if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
         run.signal.throwIfAborted()
         if (name === 'get-runtime') return manager.status(run.signal)
-        if (name.endsWith('-mcp') || name === 'set-mcp-enabled') {
+        if ((name.endsWith('-mcp') && name !== 'search-mcp') || name === 'set-mcp-enabled') {
           const engine = await getEngine()
           if (engine) {
             const version = await engineVersion(engine, run.signal)

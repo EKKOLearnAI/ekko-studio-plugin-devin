@@ -415,6 +415,68 @@
         "source"
       ],
       "additionalProperties": false
+    },
+    "nativeMcpRead": {
+      "type": "object",
+      "description": "Read one MCP entry, optionally at the revision of the displayed list.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "nativeMcpSearch": {
+      "type": "object",
+      "description": "Find entries by safe argument or path metadata in the displayed list revision.",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search text. The search returns only entry names.",
+          "maxLength": 1024
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "query",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeMcpMatches": {
+      "type": "object",
+      "description": "Names matched by a non-sensitive argument or URL path.",
+      "properties": {
+        "names": {
+          "type": "array",
+          "description": "Matching entry names; native values are never returned by search.",
+          "items": {
+            "type": "string",
+            "description": "Native skill folder name or MCP server key.",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "additionalProperties": false
     }
   },
   "rpc": {
@@ -445,7 +507,7 @@
     },
     "get-mcp": {
       "description": "Read one native user MCP entry with known secret values masked.",
-      "input": "nativeName",
+      "input": "nativeMcpRead",
       "output": "nativeDocument"
     },
     "save-mcp": {
@@ -477,6 +539,11 @@
       "description": "Return the observed installation status without contacting the inference service.",
       "input": "nativeEmpty",
       "output": "nativeRuntimeStatus"
+    },
+    "search-mcp": {
+      "description": "Search non-sensitive native MCP metadata without exposing the source values.",
+      "input": "nativeMcpSearch",
+      "output": "nativeMcpMatches"
     }
   },
   "storage": {

@@ -167,6 +167,18 @@ function protectedWords(value) {
   return words
 }
 
+function containsProtectedWord(term, words) {
+  if (!words.size) return false
+  // Search candidates are capped at 32 characters. Checking their substrings
+  // keeps the work bounded even when the server has many protected values.
+  for (let start = 0; start < term.length; start++) {
+    for (let end = start + 1; end <= term.length; end++) {
+      if (words.has(term.slice(start, end))) return true
+    }
+  }
+  return false
+}
+
 function mcpMatches(value, query) {
   const summary = mcpSummary(value)
   if (summary.transport === 'stdio' && Array.isArray(value.args)) {
@@ -179,7 +191,7 @@ function mcpMatches(value, query) {
         optionValue = arg !== '--' && !booleanMcpFlags.has(arg)
       } else if (!optionValue && plainSearchTerm(arg)) {
         const term = arg.toLowerCase()
-        if (term.includes(query) && !protectedText.has(term)) return true
+        if (term.includes(query) && !containsProtectedWord(term, protectedText)) return true
       }
     }
   }
@@ -190,7 +202,7 @@ function mcpMatches(value, query) {
     const parts = pathname.split('/').filter(Boolean)
     if (!parts.length || !parts.every(plainSearchTerm) || !pathname.toLowerCase().includes(query)) return false
     const protectedText = protectedWords(value)
-    return parts.every(part => !protectedText.has(part.toLowerCase()))
+    return parts.every(part => !containsProtectedWord(part.toLowerCase(), protectedText))
   }
   return false
 }

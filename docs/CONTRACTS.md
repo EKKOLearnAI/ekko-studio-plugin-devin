@@ -14,7 +14,7 @@ Studio Agent API v1。插件与局部 Agent ID 均为 `devin`。入口 `server.m
 
 - Agent `management.settings` 返回本插件 `skills` 视图。清单用 `agent-settings` 声明 `skills`、`mcp`、`settings` 三个入口。设置页和 RPC 校验实际 Studio `run.identity` 中的激活者和 Profile。RPC 全部在 `contracts/plugin.json` 注册和校验，并随插件停用释放。
 - 原生根目录由 Global CLI 子进程继承的系统环境决定。页面路径使用同样的 `HOME`、`XDG_CONFIG_HOME` 或 `APPDATA`，且只访问固定文件。请求携带基于文件字节的版本，避免用旧页面内容覆盖新文件。写入通过同目录临时文件和原子替换完成，取消和冲突会阻止写入。普通读取不创建目录。符号链接文件和原生根目录内的链接目录不进入读写范围。
-- Skill 入口读取直接用户 `skills/<名称>/SKILL.md`。列表返回文件名和受限长度的 YAML 描述摘要。完整 Markdown 模式按原样写入；结构化模式用可选的描述更新原生 YAML，保留其余字段。删除只移除该文件。MCP 列表返回传输类型以及命令文件名或 HTTP 源站，省略命令参数、URL 凭证和查询串。编辑器以列表 revision 读取，并以读取的同一 revision 保存。远程地址的写入与卡片展示使用同一 HTTP(S) URL 判定。search-mcp 仅搜索本次 revision 下的普通位置参数和无凭证路径，返回命中的服务名。编辑 MCP 文件时不会测试连接或启动本地命令。启动后的 CLI 自行处理 MCP 连接、版本优先级、凭证和工具审批。MCP 管理在检测到早期引擎或仍存在旧内联配置时停止操作。
+- Skill 入口读取直接用户 `skills/<名称>/SKILL.md`。列表返回文件名和受限长度的 YAML 描述摘要。完整 Markdown 模式按原样写入；结构化模式用可选的描述更新原生 YAML，保留其余字段。删除只移除该文件。MCP 列表返回传输类型以及命令文件名或 HTTP 源站，省略命令参数、URL 凭证和查询串。编辑器以列表 revision 读取，并以读取的同一 revision 保存。远程地址的写入与卡片展示使用同一 HTTP(S) URL 判定。search-mcp 仅搜索本次 revision 下的普通位置参数和无凭证路径，返回命中的服务名。已遮罩词出现在参数或路径段的任意位置时，该参数或 URL 路径整体排除。编辑 MCP 文件时不会测试连接或启动本地命令。启动后的 CLI 自行处理 MCP 连接、版本优先级、凭证和工具审批。MCP 管理在检测到早期引擎或仍存在旧内联配置时停止操作。
 - 设置 RPC 只读写 `config.json` 的本地 `read_config_from` 开关。支持 `agents_standard`、`cursor`、`windsurf`、`claude`、`copilot`、`codex`、`kiro`、`opencode`、`zed`。保留所有未编辑字段和其周围 JSONC 内容。运行环境卡通过所有者校验后的 get-runtime 读取实际安装状态。设置页和引擎目录互相独立，托管引擎移除后原生配置继续可用。
 - `.devin`、项目本地文件、兼容目录和组织策略由 CLI 启动后解析。宿主 Agent 设置回调没有绑定到可信工作区，独立的项目管理入口需要宿主契约提供工作区授权。公开 CLI 当前只有 Global 注册。
 

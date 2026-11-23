@@ -265,3 +265,40 @@ test('D5: MCP search matches harmless arguments and paths without returning conf
   await writeFile(file, before + '\n')
   await assert.rejects(search('arg-needle-204'), /Refresh the list/)
 })
+
+test('D5: MCP search excludes candidates containing an embedded masked value', async t => {
+  const { store, root } = await fixture(t)
+  await mkdir(root, { recursive: true })
+  const file = join(root, 'mcp_config.json')
+  const masked = 'cedar-roller-73'
+  const config = JSON.stringify({ mcpServers: {
+    'compound-stdio': {
+      command: 'node',
+      args: ['label-' + masked, masked.toUpperCase() + '-suffix', 'arg-needle-204'],
+      env: { API_KEY: masked },
+    },
+    'compound-http': {
+      url: 'https://example.invalid/public/label-' + masked,
+      headers: { Authorization: 'Bearer ' + masked },
+    },
+    'compound-sse': {
+      transport: 'sse',
+      url: 'https://example.invalid/' + masked.toUpperCase() + '-suffix',
+      oauthClientSecret: masked,
+    },
+    'public-http': {
+      url: 'https://example.invalid/mcp/path-needle-204',
+      headers: { Authorization: 'Bearer ' + masked },
+    },
+  } })
+  await writeFile(file, config)
+  const { revision, servers } = await store['list-mcp']()
+  const search = query => store['search-mcp']({ query, revision })
+  assert.ok(!JSON.stringify(servers).includes(masked))
+  for (const query of [masked, 'ROLLER-73', 'label-', '-suffix', '/public/label-']) {
+    assert.deepEqual(await search(query), { names: [] }, 'unexpected match for ' + query)
+  }
+  assert.deepEqual(await search('ARG-NEEDLE-204'), { names: ['compound-stdio'] })
+  assert.deepEqual(await search('/mcp/path-needle-204'), { names: ['public-http'] })
+  assert.equal(await readFile(file, 'utf8'), config)
+})

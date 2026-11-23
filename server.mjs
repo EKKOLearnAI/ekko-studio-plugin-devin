@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Acp, AcpError } from './acp.mjs'
 import { engineStatus, findEngine, loggedOut } from './engine.mjs'
+import { managedEngine } from './managed-engine.mjs'
 import { acpServers, chooseModel, initialize, loginRequired, nativeModels, promptContent, sessionError, validId } from './protocol.mjs'
 import { openAcp } from './turn.mjs'
 import manifest from './plugin.json' with { type: 'json' }
@@ -105,7 +106,8 @@ async function runTurn(input, run, previous, getEngine, signal) {
 }
 
 function createSession(owner, session, getEngine) {
-  if (!sameOwner(owner, session.identity) || session.mode !== 'global' || session.identity.agentId !== fullId) throw new Error(ownerOnly)
+  if (session.mode !== 'global') throw new Error('The public Devin CLI supports native Global mode in Studio.')
+  if (!sameOwner(owner, session.identity) || session.identity.agentId !== fullId) throw new Error(ownerOnly)
   const disposed = new AbortController()
   let active
   let previous
@@ -142,14 +144,23 @@ function createSession(owner, session, getEngine) {
   }
 }
 
-export function definitionFor(owner, getEngine = findEngine) {
+export function definitionFor(owner, getEngine = findEngine, manager) {
+  const checkOwner = run => {
+    if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
+  }
+  const management = { installGuideUrl: manifest.documentation }
+  if (manager) Object.assign(management, {
+    checkUpdate(run) { checkOwner(run); return manager.checkUpdate(run) },
+    upgrade(input, run) { checkOwner(run); return manager.upgrade(input, run) },
+    remove(run) { checkOwner(run); return manager.remove(run) },
+  })
   return {
     id: manifest.id, name: manifest.name, vendor: 'Cognition', description: manifest.description, agentApiVersion: 1,
     async getStatus(run) {
       if (!sameOwner(owner, run.identity)) return { installed: false, version: '', error: ownerOnly }
-      return engineStatus(await getEngine(), run.signal)
+      return manager ? manager.status(run.signal) : engineStatus(await getEngine(), run.signal)
     },
-    management: { installGuideUrl: manifest.documentation },
+    management,
     modes: {
       global: { listModels: run => sameOwner(owner, run.identity) ? listModels(run, getEngine) : catalog('auth_required', [], ownerOnly) },
     },
@@ -160,6 +171,8 @@ export function definitionFor(owner, getEngine = findEngine) {
 
 export function apply(ctx) {
   const { userId, profile } = ctx.identity
-  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }))
+  const manager = managedEngine(ctx.paths.dataDir)
+  const getEngine = async () => (await manager.resolve()).engine
+  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }, getEngine, manager))
   return () => registration.dispose()
 }

@@ -47,7 +47,7 @@ async function setup(t, { key = 'fixture-normal', getEngine } = {}) {
 test('registers the stable ID, declared features, and MIT manifest with the Studio Agent API', async () => {
   let registration
   let disposed
-  const cleanup = apply({ identity, extensions: { agents: { register(definition) {
+  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { agents: { register(definition) {
     registration = definition
     return { dispose() { disposed = true } }
   } } } })
@@ -56,7 +56,12 @@ test('registers the stable ID, declared features, and MIT manifest with the Stud
   assert.equal(registration.agentApiVersion, 1)
   assert.deepEqual(registration.features, { surfaces: ['chat'], streaming: true, resume: false })
   assert.deepEqual(Object.keys(registration.modes), ['global'])
+  assert.throws(() => registration.runtime.createSession({ identity, mode: 'scoped' }), /native Global mode/)
   assert.match(registration.management.installGuideUrl, /#install$/)
+  for (const action of ['checkUpdate', 'upgrade', 'remove']) {
+    assert.equal(typeof registration.management[action], 'function')
+  }
+  assert.throws(() => registration.management.checkUpdate({ identity: { ...identity, profile: 'another' } }), /account and Profile/)
   assertContracts(contract)
   await cleanup()
   assert.equal(disposed, true)

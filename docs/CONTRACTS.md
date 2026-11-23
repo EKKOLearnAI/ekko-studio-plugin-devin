@@ -1,10 +1,18 @@
 # Devin CLI 运行契约
 
-Studio Agent API v1。插件与局部 Agent ID 均为 `devin`。入口 `server.mjs` 在 `apply(ctx)` 注册 Agent，随插件停用注销。声明 `global`、`chat`、`streaming: true`、`resume: false`。Studio 使用原有 Agent SDK 接口，插件没有自定义 RPC 或持久化结构。
+Studio Agent API v1。插件与局部 Agent ID 均为 `devin`。入口 `server.mjs` 在 `apply(ctx)` 注册 Agent，随插件停用注销。声明 `global`、`chat`、`streaming: true`、`resume: false`。插件通过现有 Agent SDK 管理安装、检查更新、升级和删除。运行会话沿用原有契约。
+
+## 托管引擎
+
+- 官方 npm `devin@latest` 发布条目按当前平台标识对应包，例如 macOS arm64 使用 `devin@3000.14.30821-darwin-arm64`。插件校验 Cognition 仓库、包名、版本、OS、架构、固定下载地址、SHA-512 和解包路径，随后核对二进制版本，并用独立临时 Home 运行 ACP v1 握手。
+- Studio 通过 `getStatus`、`checkUpdate`、`upgrade` 和 `remove` 管理引擎。首次安装使用当前稳定发行版。操作串行执行，校验当前版本与预期版本。新包在插件私有 `engine/release-…` 目录暂存，校验通过后以原子文件切换发布。升级失败、取消或版本不匹配时保留当前引擎。旧版回收后不再参与路径解析。
+- `current.json` 的 `schemaVersion` 为 1。存在 `release` 时使用对应的原生内嵌二进制。旧版 0.1.0 无此文件，继续检测原有外部 CLI。托管删除后保存只有 `schemaVersion` 的记录，使偶然出现的 PATH 安装保持非活动。显式的绝对路径覆盖仍有最高优先级。
+- 外部 PATH、Homebrew、官方安装器和 npm 安装由原发行工具管理。插件的托管回收范围是私有引擎目录下的活动版本。Devin 原生登录、配置、日志、会话、用户文件及外部路径位于该范围之外。公共宿主按静态管理能力绘制按钮，外部安装的删除请求由插件明确拒绝。
+- scoped 的 Studio 契约要求真正使用 `run.model` 对应的代理地址和凭证。常规 Devin ACP 提供 Cognition 原生模型选择。官方发布包的合作伙伴文档把自定义端点限定在单独审批的构建，本版只登记 `global`。
 
 ## 进程和账号
 
-- `engine.mjs` 从 Studio 进程 PATH、常用用户安装位置或绝对路径 `EKKO_DEVIN_EXECUTABLE` 查找引擎。Agent 管理通过 `devin --version` 探测，外部 CLI 的安装和更新由使用者管理。
+- `engine.mjs` 从 Studio 进程 PATH、常用用户安装位置或绝对路径 `EKKO_DEVIN_EXECUTABLE` 查找外部引擎。管理页使用 `devin --version` 探测。Windows 支持官方安装器和官方 npm 包中的原生 `devin.exe`。
 - 官方 ACP 入口为 `devin acp`。插件加上官方 `--process-model in-process` 参数，使每轮的进程及资源由 Studio 管理。工作目录为当前受信 Studio 工作区的绝对真实路径。子进程环境按允许列表传递 OS、XDG、终端路径及网络配置。
 - 初始握手使用 ACP v1。Devin 3000.14.30821 的引擎名是 `affogato`，未登录时仍返回创建会话成功。若模型目录为空，插件检查 `devin auth status`；提示响应的 ACP `-32000` 映射成统一登录指引。插件通过原生 CLI 登录状态运行，Studio 模型代理凭证和任意父进程变量留在宿主。
 - 进入目录查询、创建会话和运行时检查激活者的 Studio 用户及 Profile。运行时还检查 Agent 和 Studio 会话身份。该边界与本机 Devin 原生登录是两层身份，安装者需用 Studio 服务进程所在的 OS 账号登录 Devin。

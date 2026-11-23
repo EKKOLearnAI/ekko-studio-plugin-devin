@@ -1,9 +1,40 @@
 {
   "schemaVersion": 1,
-  "description": "Devin CLI exposes the Studio Agent API v1. The plugin keeps the native ACP session ID in its live, identity-bound Agent instance between successful turns. It adds no custom RPC or persisted records.",
-  "models": {},
+  "description": "Devin CLI exposes Studio Agent API v1. The sole persisted engine record selects a verified release in the plugin's private engine directory.",
+  "models": {
+    "managedEngineSelection": {
+      "type": "object",
+      "description": "Selects the currently active managed release. The missing file means no managed selection has been made.",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "description": "Format version of the managed engine selection.",
+          "enum": [
+            1
+          ]
+        },
+        "release": {
+          "type": "string",
+          "description": "A release directory basename inside the managed engine root. Omitted after removal to keep automatic external detection inactive.",
+          "minLength": 9,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "schemaVersion"
+      ],
+      "additionalProperties": false
+    }
+  },
   "rpc": {},
-  "storage": {},
+  "storage": {
+    "managedEngineSelection": {
+      "description": "Private atomic selection of the verified native package active on this Studio host.",
+      "model": "managedEngineSelection",
+      "version": 1,
+      "scope": "ctx.paths.dataDir/engine/current.json"
+    }
+  },
   "tools": {},
   "commands": {},
   "actions": {},

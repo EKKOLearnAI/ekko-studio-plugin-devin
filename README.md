@@ -6,7 +6,7 @@
 
 1. 在运行 Studio 服务端的机器上安装官方 Devin CLI。macOS 可运行 `brew install --cask devin-cli`。Linux、WSL 和 Windows 的安装方法见 [Devin CLI 快速入门](https://docs.devin.ai/cli)。
 2. 用运行 Studio 的同一个系统账号执行 `devin --version`、`devin auth login` 和 `devin auth status`。按 Cognition 的流程在浏览器完成登录。企业账号可能需要 **Use Devin CLI** 角色。 [Devin Auth](https://docs.devin.ai/cli/enterprise/devin-auth)
-3. 打开 **Studio → 插件中心 → 从来源安装**，输入 `https://github.com/EKKOLearnAI/ekko-studio-plugin-devin`，确认信任后启用。固定安装源使用 `github:EKKOLearnAI/ekko-studio-plugin-devin#<完整40位提交SHA>`。也可输入本仓库检出的绝对路径做本地安装。
+3. 打开 **Studio → 插件中心 → 从来源安装**，输入 `github:EKKOLearnAI/ekko-studio-plugin-devin#a42ded4b4da0b6427a3c28311b12c3940e56638f`，确认信任后启用。也可输入本仓库检出的绝对路径做本地安装。
 4. 在 **Studio → Agent 管理** 查看 **Devin CLI** 和版本。新建单聊，选择 Devin CLI「全局」及项目目录。可以选取原生模型或使用 Devin 的默认模型。
 
 如果 Studio 找不到 `devin`，在 Studio 服务进程环境中设置 `EKKO_DEVIN_EXECUTABLE` 为官方二进制的绝对路径，再重启 Studio。Windows 请指向原生 `devin.exe`。若模型目录返回 `auth_required`，确认 Studio 服务和登录终端使用同一系统账号及 Devin 数据目录。原生凭证、配置、Skill 和 MCP 由 Devin CLI 管理。

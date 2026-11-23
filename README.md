@@ -19,6 +19,10 @@
 - 点击「停止」会取消当前原生提示并回收 ACP 进程。Studio 的 Agent 实例存续时，成功轮次可复用同一原生会话。Studio 重启或一次中断后，由 Studio 历史接续到新原生会话。
 - 适配器使用 MIT 许可。托管引擎从 Cognition 官方 npm 包独立下载，保留随包分发的文档和 npm 安装标记。 [官方 npm 发布流程](https://github.com/CognitionAI/devin-cli/blob/main/DEVELOPMENT.md#npm-publishing)
 
+## 图标来源
+
+插件随附的 `assets/icon.png` 是适配器的原创字母 D 图标。Devin 产品标识和 Cognition 官方品牌素材见 [Devin 品牌页](https://devin.ai/brand)。
+
 ## 开发与复验
 
 需要 Node.js 24.2 或更新的 24.x。发布包覆盖 macOS、Linux 与 Windows 的 x64 和 arm64 平台。原生验收环境为 macOS arm64，测试覆盖官方版本 3000.13.4 和 3000.14.30821。其他平台原生安装、真实账号推理、推理期间取消和生产附件及 MCP 使用仍待实测。

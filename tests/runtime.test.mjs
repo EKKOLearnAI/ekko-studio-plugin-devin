@@ -234,7 +234,11 @@ const realCli = process.env.EKKO_DEVIN_NATIVE_TEST_CLI
 test('official Devin binary negotiates ACP and reports login required from a disposable home', { skip: !realCli }, async t => {
   const tmp = await mkdtemp(join(await realpath(tmpdir()), 'devin-native-'))
   t.after(() => rm(tmp, { recursive: true, force: true }))
-  const env = childEnv({ PATH: process.env.PATH, HOME: tmp, USERPROFILE: tmp, SYSTEMROOT: process.env.SystemRoot, TEMP: tmp, TMPDIR: tmp })
+  const env = childEnv({
+    PATH: process.env.PATH, SYSTEMROOT: process.env.SystemRoot, HOME: tmp, USERPROFILE: tmp,
+    XDG_CONFIG_HOME: tmp, XDG_DATA_HOME: tmp, XDG_CACHE_HOME: tmp, XDG_STATE_HOME: tmp,
+    APPDATA: tmp, LOCALAPPDATA: tmp, TEMP: tmp, TMPDIR: tmp,
+  })
   const { definition, base, session, run } = await setup(t, { getEngine: async () => ({ executable: realCli, args: acpArgs, env }) })
   assert.deepEqual(await definition.getStatus(base), { installed: true, version: '3000.14.30821', source: 'external' })
   assert.equal((await definition.modes.global.listModels(base)).status, 'auth_required')

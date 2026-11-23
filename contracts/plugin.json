@@ -83,11 +83,38 @@
             "minLength": 1,
             "maxLength": 100
           }
+        },
+        "summaries": {
+          "type": "array",
+          "description": "Skill names and brief descriptions for the searchable list.",
+          "items": {
+            "type": "object",
+            "description": "Preview of a native Skill.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Native skill folder name or MCP server key.",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "description": {
+                "type": "string",
+                "description": "Short native description.",
+                "maxLength": 280
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
         "path",
-        "names"
+        "names",
+        "summaries"
       ],
       "additionalProperties": false
     },
@@ -115,11 +142,28 @@
               "enabled": {
                 "type": "boolean",
                 "description": "Whether Devin enables the connection in this user file. A project can override it."
+              },
+              "transport": {
+                "type": "string",
+                "description": "Native transport displayed on the card.",
+                "enum": [
+                  "stdio",
+                  "http",
+                  "sse",
+                  "unknown"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "description": "Command basename or URL origin. Arguments, paths, URL credentials and query are excluded.",
+                "maxLength": 1024
               }
             },
             "required": [
               "name",
-              "enabled"
+              "enabled",
+              "transport",
+              "target"
             ],
             "additionalProperties": false
           }
@@ -154,18 +198,27 @@
           "type": "string",
           "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
           "maxLength": 64
+        },
+        "supportedImports": {
+          "type": "array",
+          "description": "Documented native sources accepted by the configuration editor.",
+          "items": {
+            "type": "string",
+            "description": "One native read_config_from key."
+          }
         }
       },
       "required": [
         "path",
         "content",
-        "revision"
+        "revision",
+        "supportedImports"
       ],
       "additionalProperties": false
     },
     "nativeSaveSkill": {
       "type": "object",
-      "description": "Save Markdown under a direct native Skill folder.",
+      "description": "Save a full Skill file, or a Markdown body with a native frontmatter description.",
       "properties": {
         "name": {
           "type": "string",
@@ -182,6 +235,11 @@
           "type": "string",
           "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
           "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill description in native YAML frontmatter.",
+          "maxLength": 16384
         }
       },
       "required": [
@@ -289,6 +347,74 @@
         "ok"
       ],
       "additionalProperties": false
+    },
+    "nativeSkillDocument": {
+      "type": "object",
+      "description": "The full Skill file, with optional structured editing fields.",
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Editor text. Skill Markdown or an editable JSON object.",
+          "maxLength": 1048576
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill description in native YAML frontmatter.",
+          "maxLength": 16384
+        },
+        "bodyOffset": {
+          "type": "integer",
+          "description": "UTF-16 offset of the Markdown body in content. Absent when the full Skill file must be edited as raw Markdown.",
+          "minimum": 0,
+          "maximum": 1048576
+        }
+      },
+      "required": [
+        "content",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeRuntimeStatus": {
+      "type": "object",
+      "description": "Observed installation state of the CLI selected for this plugin.",
+      "properties": {
+        "installed": {
+          "type": "boolean",
+          "description": "True when the CLI executable reports a verified version."
+        },
+        "version": {
+          "type": "string",
+          "description": "Verified CLI version or an empty string.",
+          "maxLength": 128
+        },
+        "source": {
+          "type": "string",
+          "description": "Studio-managed or external installation, or selection failure.",
+          "enum": [
+            "managed",
+            "external",
+            "not-installed",
+            "error"
+          ]
+        },
+        "error": {
+          "type": "string",
+          "description": "Optional engine selection or verification error.",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "installed",
+        "version",
+        "source"
+      ],
+      "additionalProperties": false
     }
   },
   "rpc": {
@@ -300,7 +426,7 @@
     "get-skill": {
       "description": "Read one user SKILL.md without modifying it.",
       "input": "nativeName",
-      "output": "nativeDocument"
+      "output": "nativeSkillDocument"
     },
     "save-skill": {
       "description": "Create or save one user SKILL.md.",
@@ -346,6 +472,11 @@
       "description": "Patch the editable settings subset. Null removes a setting; omission preserves it.",
       "input": "nativeDocument",
       "output": "nativeSaved"
+    },
+    "get-runtime": {
+      "description": "Return the observed installation status without contacting the inference service.",
+      "input": "nativeEmpty",
+      "output": "nativeRuntimeStatus"
     }
   },
   "storage": {

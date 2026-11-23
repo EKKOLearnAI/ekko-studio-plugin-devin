@@ -72,7 +72,7 @@ test('registers the stable ID, declared features, and MIT manifest with the Stud
   for (const localized of Object.values(manifest.i18n)) assert.deepEqual(Object.keys(localized.views), ['skills', 'mcp', 'settings'])
   assert.deepEqual([...registeredRpc.keys()], Object.keys(contract.rpc))
   const signal = new AbortController().signal
-  for (const [name, input] of [['list-skills', null], ['get-mcp', { name: 'example' }], ['get-settings', null]]) {
+  for (const [name, input] of [['list-skills', null], ['get-mcp', { name: 'example' }], ['get-settings', null], ['get-runtime', null]]) {
     await assert.rejects(registeredRpc.get(name)(input, { identity: { ...identity, userId: 43 }, signal }), /account and Profile/)
   }
   await assert.rejects(registeredRpc.get('save-settings')({ content: '{}' }, { identity, signal }), /revision/)

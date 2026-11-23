@@ -4,6 +4,8 @@ import { lstat, mkdir, open, rename, unlink, readdir } from 'node:fs/promises'
 import { basename, dirname, join, posix, win32 } from 'node:path'
 import { applyEdits, createScanner, findNodeAtLocation, getNodeValue, modify, parseTree, SyntaxKind } from './vendor/jsonc-parser.mjs'
 
+import { formatSkill, skillFields } from './skill-markdown.mjs'
+
 const maxBytes = 1024 * 1024
 const reserved = new Set(['__proto__', 'prototype', 'constructor'])
 const mask = '••••••••'
@@ -126,6 +128,23 @@ function mapSecrets(value, transform, path = [], protectedValue = false) {
   return transform(value, path, protectedValue)
 }
 
+function mcpSummary(value) {
+  const invalid = { transport: 'unknown', target: '' }
+  if (typeof value?.url === 'string') {
+    if (value.command !== undefined || value.transport !== undefined && !['http', 'sse'].includes(value.transport)) return invalid
+    try {
+      const address = new URL(value.url)
+      if (!['https:', 'http:'].includes(address.protocol)) return invalid
+      return { transport: value.transport === 'sse' ? 'sse' : 'http', target: address.origin.slice(0, 1024) }
+    } catch { return invalid }
+  }
+  if (typeof value?.command === 'string' && value.command.trim() && (value.transport === undefined || value.transport === 'stdio')) {
+    const target = value.command.split(/[\\/]/).at(-1)
+    return { transport: 'stdio', target: /^[a-z0-9_.+-]{1,120}$/i.test(target) ? target : '' }
+  }
+  return invalid
+}
+
 function validatePatch(patch) {
   for (const [key, group] of Object.entries(patch)) {
     if (key !== 'read_config_from' || !object(group) || Object.entries(group).some(([name, value]) =>
@@ -152,7 +171,7 @@ export function nativeSettings(root) {
     return true
   }
 
-  async function read(parts) {
+  async function read(parts, preview) {
     if (!await folder(parts.slice(0, -1))) return missing
     const path = join(root, ...parts)
     const state = await lstat(path).catch(error => { if (absent(error)) return null; throw error })
@@ -162,12 +181,13 @@ export function nativeSettings(root) {
     try {
       const current = await fd.stat()
       if (!current.isFile() || current.dev !== state.dev || current.ino !== state.ino) throw unsafePath()
-      if (current.size > maxBytes) throw new Error('Devin settings file exceeds 1 MiB.')
-      const buffer = Buffer.alloc(current.size + 1)
+      if (!preview && current.size > maxBytes) throw new Error('Devin settings file exceeds 1 MiB.')
+      const count = preview ? Math.min(preview, current.size) : current.size
+      const buffer = Buffer.alloc(count + 1)
       const { bytesRead } = await fd.read(buffer, 0, buffer.length, 0)
-      if (bytesRead !== current.size) throw new Error('This file changed while being read. Reload and try again.')
+      if (bytesRead < count || !preview && bytesRead !== count) throw new Error('This file changed while being read. Reload and try again.')
       const bytes = buffer.subarray(0, bytesRead)
-      const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)
+      const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes, { stream: Boolean(preview && current.size > bytesRead) })
       return { text, revision: revisionOf(bytes), mode: current.mode & 0o777 }
     } finally {
       await fd.close()
@@ -250,25 +270,32 @@ export function nativeSettings(root) {
   return {
     async 'list-skills'() {
       const path = join(root, 'skills')
-      if (!await folder(['skills'])) return { path, names: [] }
+      if (!await folder(['skills'])) return { path, names: [], summaries: [] }
       const entries = await readdir(path, { withFileTypes: true })
-      const names = []
+      const summaries = []
       for (const entry of entries) {
         if (!entry.isDirectory()) continue
         let parts
         try { parts = skill(entry.name) } catch { continue }
         const info = await lstat(join(root, ...parts)).catch(error => { if (absent(error)) return null; throw error })
-        if (info?.isFile()) names.push(entry.name)
+        if (!info?.isFile()) continue
+        const description = await read(parts, 16_384).then(
+          preview => skillFields(preview.text).description?.trim().slice(0, 280) ?? '',
+          () => '',
+        )
+        summaries.push({ name: entry.name, description })
       }
-      return { path, names: names.sort() }
+      summaries.sort((left, right) => left.name.localeCompare(right.name))
+      return { path, names: summaries.map(item => item.name), summaries }
     },
     async 'get-skill'({ name }) {
       const { text, revision } = await read(skill(name))
-      return { content: text, revision }
+      return { content: text, revision, ...skillFields(text) }
     },
-    'save-skill'({ name, content, revision }, signal) {
+    'save-skill'({ name, content, revision, description }, signal) {
       if (!content.trim()) throw new Error('A Skill requires Markdown content.')
-      return change(skill(name), revision, signal, () => content)
+      return change(skill(name), revision, signal, original =>
+        description === undefined ? content : formatSkill(name, original, content, description))
     },
     'remove-skill'({ name, revision }, signal) {
       return change(skill(name), revision, signal, () => null)
@@ -277,7 +304,7 @@ export function nativeSettings(root) {
       await checkMcpLayout()
       const { text, revision } = await read(mcp)
       const servers = Object.entries(serversIn(text)).sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, value]) => ({ name, enabled: object(value) && value.disabled !== true }))
+        .map(([name, value]) => ({ name, enabled: object(value) && value.disabled !== true, ...mcpSummary(value) }))
       return { path: join(root, ...mcp), servers, revision }
     },
     async 'get-mcp'({ name }) {
@@ -320,7 +347,7 @@ export function nativeSettings(root) {
         const setting = get(value, path)
         if (typeof setting === 'boolean') output = edits(output, path, setting)
       }
-      return { path: join(root, ...config), content: output, revision }
+      return { path: join(root, ...config), content: output, revision, supportedImports: imports }
     },
     'save-settings'({ content, revision }, signal) {
       const patch = parse(content, false)

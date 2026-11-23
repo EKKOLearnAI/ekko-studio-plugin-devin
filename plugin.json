@@ -8,44 +8,44 @@
       "description": "Run Devin CLI in Studio through its native ACP interface.",
       "views": {
         "skills": "Skills",
-        "mcp": "MCP",
-        "settings": "Settings"
+        "mcp": "MCP servers",
+        "settings": "Configuration file"
       }
     },
     "zh": {
       "name": "Devin CLI",
       "description": "通过原生 ACP 接口在 Studio 中使用 Devin CLI。",
       "views": {
-        "skills": "Skill",
-        "mcp": "MCP",
-        "settings": "设置"
+        "skills": "Skill 管理",
+        "mcp": "MCP 管理",
+        "settings": "配置文件"
       }
     },
     "zh-TW": {
       "name": "Devin CLI",
       "description": "透過原生 ACP 介面在 Studio 中使用 Devin CLI。",
       "views": {
-        "skills": "Skill",
-        "mcp": "MCP",
-        "settings": "設定"
+        "skills": "Skill 管理",
+        "mcp": "MCP 管理",
+        "settings": "設定檔"
       }
     },
     "ja": {
       "name": "Devin CLI",
       "description": "ネイティブ ACP インターフェースで Studio から Devin CLI を使えます。",
       "views": {
-        "skills": "スキル",
-        "mcp": "MCP",
-        "settings": "設定"
+        "skills": "スキル管理",
+        "mcp": "MCP サーバー",
+        "settings": "設定ファイル"
       }
     },
     "ko": {
       "name": "Devin CLI",
       "description": "네이티브 ACP 인터페이스를 통해 Studio에서 Devin CLI를 실행합니다.",
       "views": {
-        "skills": "스킬",
-        "mcp": "MCP",
-        "settings": "설정"
+        "skills": "스킬 관리",
+        "mcp": "MCP 서버",
+        "settings": "구성 파일"
       }
     },
     "fr": {
@@ -53,17 +53,17 @@
       "description": "Utilisez Devin CLI dans Studio via son interface ACP native.",
       "views": {
         "skills": "Compétences",
-        "mcp": "MCP",
-        "settings": "Paramètres"
+        "mcp": "Serveurs MCP",
+        "settings": "Fichier de configuration"
       }
     },
     "es": {
       "name": "Devin CLI",
       "description": "Usa Devin CLI en Studio mediante su interfaz ACP nativa.",
       "views": {
-        "skills": "Habilidades",
-        "mcp": "MCP",
-        "settings": "Configuración"
+        "skills": "Skills",
+        "mcp": "Servidores MCP",
+        "settings": "Archivo de configuración"
       }
     },
     "de": {
@@ -71,17 +71,17 @@
       "description": "Verwenden Sie Devin CLI in Studio über die native ACP-Schnittstelle.",
       "views": {
         "skills": "Skills",
-        "mcp": "MCP",
-        "settings": "Einstellungen"
+        "mcp": "MCP-Server",
+        "settings": "Konfigurationsdatei"
       }
     },
     "pt": {
       "name": "Devin CLI",
       "description": "Use a Devin CLI no Studio por meio da interface ACP nativa.",
       "views": {
-        "skills": "Habilidades",
-        "mcp": "MCP",
-        "settings": "Configurações"
+        "skills": "Skills",
+        "mcp": "Servidores MCP",
+        "settings": "Arquivo de configuração"
       }
     },
     "ru": {
@@ -89,8 +89,8 @@
       "description": "Используйте Devin CLI в Studio через его встроенный интерфейс ACP.",
       "views": {
         "skills": "Навыки",
-        "mcp": "MCP",
-        "settings": "Настройки"
+        "mcp": "Серверы MCP",
+        "settings": "Файл конфигурации"
       }
     },
     "ar": {
@@ -98,8 +98,8 @@
       "description": "استخدم Devin CLI في Studio عبر واجهة ACP الأصلية.",
       "views": {
         "skills": "المهارات",
-        "mcp": "MCP",
-        "settings": "الإعدادات"
+        "mcp": "خوادم MCP",
+        "settings": "ملف الإعدادات"
       }
     },
     "tr": {
@@ -107,8 +107,8 @@
       "description": "Devin CLI’yi Studio’da yerel ACP arabirimi üzerinden kullanın.",
       "views": {
         "skills": "Beceriler",
-        "mcp": "MCP",
-        "settings": "Ayarlar"
+        "mcp": "MCP sunucuları",
+        "settings": "Yapılandırma dosyası"
       }
     }
   },
@@ -137,13 +137,13 @@
     },
     {
       "id": "mcp",
-      "title": "MCP",
+      "title": "MCP servers",
       "slot": "agent-settings",
       "icon": "mcp"
     },
     {
       "id": "settings",
-      "title": "Settings",
+      "title": "Configuration file",
       "slot": "agent-settings",
       "icon": "settings"
     }

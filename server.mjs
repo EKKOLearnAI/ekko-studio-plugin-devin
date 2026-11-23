@@ -187,6 +187,7 @@ export function apply(ctx) {
       dispose.push(registerRpc(ctx, contract, name, async (input, run) => {
         if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
         run.signal.throwIfAborted()
+        if (name === 'get-runtime') return manager.status(run.signal)
         if (name.endsWith('-mcp') || name === 'set-mcp-enabled') {
           const engine = await getEngine()
           if (engine) {

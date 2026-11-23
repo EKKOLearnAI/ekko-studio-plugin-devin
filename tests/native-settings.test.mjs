@@ -302,3 +302,49 @@ test('D5: MCP search excludes candidates containing an embedded masked value', a
   assert.deepEqual(await search('/mcp/path-needle-204'), { names: ['public-http'] })
   assert.equal(await readFile(file, 'utf8'), config)
 })
+
+test('D5: ordinary search survives masked color and version metadata', async t => {
+  const { store, root } = await fixture(t)
+  await mkdir(root, { recursive: true })
+  const file = join(root, 'mcp_config.json')
+  const config = JSON.stringify({ mcpServers: {
+    'version-stdio': { command: 'node', args: ['lint-v1', 'lint-v2'], env: { NO_COLOR: '1' } },
+    'version-http-one': { url: 'https://example.invalid/workflow-v1', headers: { 'X-API-Version': '1' } },
+    'version-http-two': { url: 'https://example.invalid/workflow-v2', headers: { 'x-api-version': '1' } },
+  } })
+  await writeFile(file, config)
+  const { revision } = await store['list-mcp']()
+  for (const [name, section, field] of [
+    ['version-stdio', 'env', 'NO_COLOR'],
+    ['version-http-one', 'headers', 'X-API-Version'],
+    ['version-http-two', 'headers', 'x-api-version'],
+  ]) {
+    const { content } = await store['get-mcp']({ name, revision })
+    assert.match(JSON.parse(content)[section][field], /^•+$/)
+  }
+  for (const [query, name] of [
+    ['lint-v1', 'version-stdio'], ['lint-v2', 'version-stdio'],
+    ['/workflow-v1', 'version-http-one'], ['workflow-v2', 'version-http-two'],
+  ]) {
+    assert.deepEqual(await store['search-mcp']({ query, revision }), { names: [name] }, 'ordinary query ' + query)
+  }
+  assert.equal(await readFile(file, 'utf8'), config)
+})
+
+test('D5: short credentials and nonstandard metadata values remain protected', async t => {
+  const { store, root } = await fixture(t)
+  await mkdir(root, { recursive: true })
+  await writeFile(join(root, 'mcp_config.json'), JSON.stringify({ mcpServers: {
+    'short-stdio': { command: 'node', args: ['lint-v1', 'lint-v2'], env: { NO_COLOR: '1', API_KEY: '1' } },
+    'short-http': { url: 'https://example.invalid/workflow-v1',
+      headers: { 'X-API-Version': '1', Authorization: 'Bearer 1' } },
+    'opaque-env': { command: 'node', args: ['label-oaken-petal-72'], env: { NO_COLOR: 'oaken-petal-72' } },
+    'opaque-header': { url: 'https://example.invalid/wrap-birch-petal-74',
+      headers: { 'X-API-Version': 'birch-petal-74' } },
+  } }))
+  const { revision } = await store['list-mcp']()
+  for (const query of ['lint-v1', 'workflow-v1', 'oaken-petal', 'birch-petal', 'label-', 'wrap-']) {
+    assert.deepEqual(await store['search-mcp']({ query, revision }), { names: [] })
+  }
+  assert.deepEqual(await store['search-mcp']({ query: 'lint-v2', revision }), { names: ['short-stdio'] })
+})

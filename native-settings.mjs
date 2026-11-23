@@ -158,10 +158,19 @@ function plainSearchTerm(value) {
     !/^[a-f0-9]{16,}$/i.test(value) && !/^(?:gh[pousr]_|sk[-_]|xox[a-z]-|eyJ)/.test(value)
 }
 
+function isSearchMetadata(path, value) {
+  if (path.length !== 2) return false
+  const [section, name] = path
+  if (section === 'env' && name === 'NO_COLOR') return /^[01]$/.test(value)
+  return section === 'headers' && /^x-api-version$/i.test(name) && /^\d{1,4}(?:\.\d{1,4}){0,2}$/.test(value)
+}
+
 function protectedWords(value) {
   const words = new Set()
-  mapSecrets(value, (item, _path, secret) => {
-    if (!secret || typeof item !== 'string') return
+  mapSecrets(value, (item, path, secret) => {
+    // The editor masks all env/header values. Only recognized metadata with
+    // an expected value shape is exempt from credential substring filtering.
+    if (!secret || typeof item !== 'string' || isSearchMetadata(path, item)) return
     for (const word of item.toLowerCase().match(/[a-z0-9._-]+/g) ?? []) words.add(word)
   })
   return words

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "description": "Devin CLI exposes Studio Agent API v1. The sole persisted engine record selects a verified release in the plugin's private engine directory.",
+  "description": "Devin CLI exposes Agent API v1 and owner-only RPCs for the native user configuration used by the Global engine.",
   "models": {
     "managedEngineSelection": {
       "type": "object",
@@ -24,9 +24,330 @@
         "schemaVersion"
       ],
       "additionalProperties": false
+    },
+    "nativeEmpty": {
+      "type": "null",
+      "description": "Pass null to load the native user scope without parameters."
+    },
+    "nativeName": {
+      "type": "object",
+      "description": "Identifies one native entry by name.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "nativeDocument": {
+      "type": "object",
+      "description": "Native editor text and the file revision required for a write.",
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Editor text. Skill Markdown or an editable JSON object.",
+          "maxLength": 1048576
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "content",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeSkillList": {
+      "type": "object",
+      "description": "Direct user-defined skill files in the native skills directory.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute native path on the Studio host."
+        },
+        "names": {
+          "type": "array",
+          "description": "Skill folder names.",
+          "items": {
+            "type": "string",
+            "description": "Native skill folder name or MCP server key.",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      },
+      "required": [
+        "path",
+        "names"
+      ],
+      "additionalProperties": false
+    },
+    "nativeMcpList": {
+      "type": "object",
+      "description": "MCP connections declared in the user file.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute native path on the Studio host."
+        },
+        "servers": {
+          "type": "array",
+          "description": "Declared native MCP connections.",
+          "items": {
+            "type": "object",
+            "description": "An MCP connection.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Native skill folder name or MCP server key.",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether Devin enables the connection in this user file. A project can override it."
+              }
+            },
+            "required": [
+              "name",
+              "enabled"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "path",
+        "servers",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeSettings": {
+      "type": "object",
+      "description": "Editable subset of the native user config file.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute native path on the Studio host."
+        },
+        "content": {
+          "type": "string",
+          "description": "Editor text. Skill Markdown or an editable JSON object.",
+          "maxLength": 1048576
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "path",
+        "content",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeSaveSkill": {
+      "type": "object",
+      "description": "Save Markdown under a direct native Skill folder.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "content": {
+          "type": "string",
+          "description": "Editor text. Skill Markdown or an editable JSON object.",
+          "maxLength": 1048576
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "name",
+        "content",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeSaveMcp": {
+      "type": "object",
+      "description": "Create or replace one MCP entry while keeping other servers and surrounding settings.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "content": {
+          "type": "string",
+          "description": "Editor text. Skill Markdown or an editable JSON object.",
+          "maxLength": 1048576
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        },
+        "create": {
+          "type": "boolean",
+          "description": "True to add a new name; false to replace an existing entry."
+        }
+      },
+      "required": [
+        "name",
+        "content",
+        "revision",
+        "create"
+      ],
+      "additionalProperties": false
+    },
+    "nativeToggleMcp": {
+      "type": "object",
+      "description": "Change the native disabled setting for one server.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether Devin enables the connection in this user file. A project can override it."
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "name",
+        "enabled",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeRemove": {
+      "type": "object",
+      "description": "Remove one entry at the given revision.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native skill folder name or MCP server key.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "revision": {
+          "type": "string",
+          "description": "SHA-256 revision of the current native file. Empty when the file is missing.",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "name",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeSaved": {
+      "type": "object",
+      "description": "Confirms the requested change is complete.",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "True after a successful change.",
+          "enum": [
+            true
+          ]
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
     }
   },
-  "rpc": {},
+  "rpc": {
+    "list-skills": {
+      "description": "List native user Skills.",
+      "input": "nativeEmpty",
+      "output": "nativeSkillList"
+    },
+    "get-skill": {
+      "description": "Read one user SKILL.md without modifying it.",
+      "input": "nativeName",
+      "output": "nativeDocument"
+    },
+    "save-skill": {
+      "description": "Create or save one user SKILL.md.",
+      "input": "nativeSaveSkill",
+      "output": "nativeSaved"
+    },
+    "remove-skill": {
+      "description": "Remove one user SKILL.md and retain its siblings.",
+      "input": "nativeRemove",
+      "output": "nativeSaved"
+    },
+    "list-mcp": {
+      "description": "List native user MCP entries and their enabled states.",
+      "input": "nativeEmpty",
+      "output": "nativeMcpList"
+    },
+    "get-mcp": {
+      "description": "Read one native user MCP entry with known secret values masked.",
+      "input": "nativeName",
+      "output": "nativeDocument"
+    },
+    "save-mcp": {
+      "description": "Create or update one native user MCP entry.",
+      "input": "nativeSaveMcp",
+      "output": "nativeSaved"
+    },
+    "set-mcp-enabled": {
+      "description": "Change the native disabled field.",
+      "input": "nativeToggleMcp",
+      "output": "nativeSaved"
+    },
+    "remove-mcp": {
+      "description": "Remove one user MCP entry.",
+      "input": "nativeRemove",
+      "output": "nativeSaved"
+    },
+    "get-settings": {
+      "description": "Read the editable native settings subset.",
+      "input": "nativeEmpty",
+      "output": "nativeSettings"
+    },
+    "save-settings": {
+      "description": "Patch the editable settings subset. Null removes a setting; omission preserves it.",
+      "input": "nativeDocument",
+      "output": "nativeSaved"
+    }
+  },
   "storage": {
     "managedEngineSelection": {
       "description": "Private atomic selection of the verified native package active on this Studio host.",

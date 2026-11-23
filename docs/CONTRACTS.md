@@ -10,6 +10,16 @@ Studio Agent API v1。插件与局部 Agent ID 均为 `devin`。入口 `server.m
 - 外部 PATH、Homebrew、官方安装器和 npm 安装由原发行工具管理。插件的托管回收范围是私有引擎目录下的活动版本。Devin 原生登录、配置、日志、会话、用户文件及外部路径位于该范围之外。公共宿主按静态管理能力绘制按钮，外部安装的删除请求由插件明确拒绝。
 - scoped 的 Studio 契约要求真正使用 `run.model` 对应的代理地址和凭证。常规 Devin ACP 提供 Cognition 原生模型选择。官方发布包的合作伙伴文档把自定义端点限定在单独审批的构建，本版只登记 `global`。
 
+## 原生用户设置
+
+- Agent `management.settings` 返回本插件 `skills` 视图。清单用 `agent-settings` 声明 `skills`、`mcp`、`settings` 三个入口。设置页和 RPC 校验实际 Studio `run.identity` 中的激活者和 Profile。RPC 全部在 `contracts/plugin.json` 注册和校验，并随插件停用释放。
+- 原生根目录由 Global CLI 子进程继承的系统环境决定。页面路径使用同样的 `HOME`、`XDG_CONFIG_HOME` 或 `APPDATA`，且只访问固定文件。请求携带基于文件字节的版本，避免用旧页面内容覆盖新文件。写入通过同目录临时文件和原子替换完成，取消和冲突会阻止写入。普通读取不创建目录。符号链接文件和原生根目录内的链接目录不进入读写范围。
+- Skill 入口读取直接用户 `skills/<名称>/SKILL.md`。原样写入 Markdown，删除只移除该文件。MCP 执行文件编辑不会测试连接或启动本地命令。启动后的 CLI 自行处理 MCP 连接、版本优先级、凭证和工具审批。MCP 管理在检测到早期引擎或仍存在旧内联配置时停止操作。
+- 设置 RPC 只读写 `config.json` 的本地 `read_config_from` 开关。支持 `agents_standard`、`cursor`、`windsurf`、`claude`、`copilot`、`codex`、`kiro`、`opencode`、`zed`。保留所有未编辑字段和其周围 JSONC 内容。设置页和引擎目录互相独立，托管引擎移除后原生配置继续可用。
+- `.devin`、项目本地文件、兼容目录和组织策略由 CLI 启动后解析。宿主 Agent 设置回调没有绑定到可信工作区，独立的项目管理入口需要宿主契约提供工作区授权。公开 CLI 当前只有 Global 注册。
+
+JSONC 解析及增加/替换使用 vendored Microsoft jsonc-parser 3.3.1。文件来自 npm 包 `lib/esm/main.js` 和它的依赖，由 esbuild 打包为可独立导入的 ESM。许可见 `vendor/LICENSE.jsonc-parser`。 [上游发行版本](https://github.com/microsoft/node-jsonc-parser/tree/v3.3.1)
+
 ## 进程和账号
 
 - `engine.mjs` 从 Studio 进程 PATH、常用用户安装位置或绝对路径 `EKKO_DEVIN_EXECUTABLE` 查找外部引擎。管理页使用 `devin --version` 探测。Windows 支持官方安装器和官方 npm 包中的原生 `devin.exe`。

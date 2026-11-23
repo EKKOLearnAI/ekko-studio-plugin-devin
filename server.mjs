@@ -2,8 +2,11 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Acp, AcpError } from './acp.mjs'
-import { engineStatus, findEngine, loggedOut } from './engine.mjs'
+import { childEnv, engineStatus, engineVersion, findEngine, loggedOut } from './engine.mjs'
 import { managedEngine } from './managed-engine.mjs'
+import { nativeConfigRoot, nativeSettings } from './native-settings.mjs'
+import { registerRpc } from './sdk/harness/contracts.mjs'
+import contract from './contracts/plugin.json' with { type: 'json' }
 import { acpServers, chooseModel, initialize, loginRequired, nativeModels, promptContent, sessionError, validId } from './protocol.mjs'
 import { openAcp } from './turn.mjs'
 import manifest from './plugin.json' with { type: 'json' }
@@ -148,7 +151,10 @@ export function definitionFor(owner, getEngine = findEngine, manager) {
   const checkOwner = run => {
     if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
   }
-  const management = { installGuideUrl: manifest.documentation }
+  const management = {
+    installGuideUrl: manifest.documentation,
+    settings(run) { checkOwner(run); return { viewId: 'skills' } },
+  }
   if (manager) Object.assign(management, {
     checkUpdate(run) { checkOwner(run); return manager.checkUpdate(run) },
     upgrade(input, run) { checkOwner(run); return manager.upgrade(input, run) },
@@ -173,6 +179,34 @@ export function apply(ctx) {
   const { userId, profile } = ctx.identity
   const manager = managedEngine(ctx.paths.dataDir)
   const getEngine = async () => (await manager.resolve()).engine
-  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }, getEngine, manager))
-  return () => registration.dispose()
+  const owner = { userId, profile }
+  const dispose = []
+  let settings
+  try {
+    for (const name of Object.keys(contract.rpc)) {
+      dispose.push(registerRpc(ctx, contract, name, async (input, run) => {
+        if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
+        run.signal.throwIfAborted()
+        if (name.endsWith('-mcp') || name === 'set-mcp-enabled') {
+          const engine = await getEngine()
+          if (engine) {
+            const version = await engineVersion(engine, run.signal)
+            if (!version) throw new Error('Could not verify the selected Devin CLI version for MCP settings.')
+            const [major, minor] = version.split('.').map(Number)
+            if (major < 3000 || (major === 3000 && minor < 3)) {
+              throw new Error('MCP settings here require Devin CLI 3000.3 or later.')
+            }
+          }
+        }
+        settings ??= nativeSettings(nativeConfigRoot(childEnv()))
+        return settings[name](input, run.signal)
+      }))
+    }
+    const registration = ctx.extensions.agents.register(definitionFor(owner, getEngine, manager))
+    dispose.push(() => registration.dispose())
+  } catch (error) {
+    for (const cleanup of dispose.reverse()) cleanup()
+    throw error
+  }
+  return () => { for (const cleanup of dispose.reverse()) cleanup() }
 }

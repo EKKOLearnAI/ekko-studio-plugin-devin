@@ -5,58 +5,119 @@
   "i18n": {
     "en": {
       "name": "Devin CLI",
-      "description": "Run Devin CLI in Studio through its native ACP interface."
+      "description": "Run Devin CLI in Studio through its native ACP interface.",
+      "views": {
+        "skills": "Skills",
+        "mcp": "MCP",
+        "settings": "Settings"
+      }
     },
     "zh": {
       "name": "Devin CLI",
-      "description": "通过原生 ACP 接口在 Studio 中使用 Devin CLI。"
+      "description": "通过原生 ACP 接口在 Studio 中使用 Devin CLI。",
+      "views": {
+        "skills": "Skill",
+        "mcp": "MCP",
+        "settings": "设置"
+      }
     },
     "zh-TW": {
       "name": "Devin CLI",
-      "description": "透過原生 ACP 介面在 Studio 中使用 Devin CLI。"
+      "description": "透過原生 ACP 介面在 Studio 中使用 Devin CLI。",
+      "views": {
+        "skills": "Skill",
+        "mcp": "MCP",
+        "settings": "設定"
+      }
     },
     "ja": {
       "name": "Devin CLI",
-      "description": "ネイティブ ACP インターフェースで Studio から Devin CLI を使えます。"
+      "description": "ネイティブ ACP インターフェースで Studio から Devin CLI を使えます。",
+      "views": {
+        "skills": "スキル",
+        "mcp": "MCP",
+        "settings": "設定"
+      }
     },
     "ko": {
       "name": "Devin CLI",
-      "description": "네이티브 ACP 인터페이스를 통해 Studio에서 Devin CLI를 실행합니다."
+      "description": "네이티브 ACP 인터페이스를 통해 Studio에서 Devin CLI를 실행합니다.",
+      "views": {
+        "skills": "스킬",
+        "mcp": "MCP",
+        "settings": "설정"
+      }
     },
     "fr": {
       "name": "Devin CLI",
-      "description": "Utilisez Devin CLI dans Studio via son interface ACP native."
+      "description": "Utilisez Devin CLI dans Studio via son interface ACP native.",
+      "views": {
+        "skills": "Compétences",
+        "mcp": "MCP",
+        "settings": "Paramètres"
+      }
     },
     "es": {
       "name": "Devin CLI",
-      "description": "Usa Devin CLI en Studio mediante su interfaz ACP nativa."
+      "description": "Usa Devin CLI en Studio mediante su interfaz ACP nativa.",
+      "views": {
+        "skills": "Habilidades",
+        "mcp": "MCP",
+        "settings": "Configuración"
+      }
     },
     "de": {
       "name": "Devin CLI",
-      "description": "Verwenden Sie Devin CLI in Studio über die native ACP-Schnittstelle."
+      "description": "Verwenden Sie Devin CLI in Studio über die native ACP-Schnittstelle.",
+      "views": {
+        "skills": "Skills",
+        "mcp": "MCP",
+        "settings": "Einstellungen"
+      }
     },
     "pt": {
       "name": "Devin CLI",
-      "description": "Use a Devin CLI no Studio por meio da interface ACP nativa."
+      "description": "Use a Devin CLI no Studio por meio da interface ACP nativa.",
+      "views": {
+        "skills": "Habilidades",
+        "mcp": "MCP",
+        "settings": "Configurações"
+      }
     },
     "ru": {
       "name": "Devin CLI",
-      "description": "Используйте Devin CLI в Studio через его встроенный интерфейс ACP."
+      "description": "Используйте Devin CLI в Studio через его встроенный интерфейс ACP.",
+      "views": {
+        "skills": "Навыки",
+        "mcp": "MCP",
+        "settings": "Настройки"
+      }
     },
     "ar": {
       "name": "Devin CLI",
-      "description": "استخدم Devin CLI في Studio عبر واجهة ACP الأصلية."
+      "description": "استخدم Devin CLI في Studio عبر واجهة ACP الأصلية.",
+      "views": {
+        "skills": "المهارات",
+        "mcp": "MCP",
+        "settings": "الإعدادات"
+      }
     },
     "tr": {
       "name": "Devin CLI",
-      "description": "Devin CLI’yi Studio’da yerel ACP arabirimi üzerinden kullanın."
+      "description": "Devin CLI’yi Studio’da yerel ACP arabirimi üzerinden kullanın.",
+      "views": {
+        "skills": "Beceriler",
+        "mcp": "MCP",
+        "settings": "Ayarlar"
+      }
     }
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "server": "server.mjs",
   "permissions": [
-    "agents"
+    "agents",
+    "ui"
   ],
   "author": {
     "name": "Ekko Studio"
@@ -65,5 +126,26 @@
   "homepage": "https://docs.devin.ai/cli",
   "documentation": "https://github.com/EKKOLearnAI/ekko-studio-plugin-devin#install",
   "license": "MIT",
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "client": "client.mjs",
+  "views": [
+    {
+      "id": "skills",
+      "title": "Skills",
+      "slot": "agent-settings",
+      "icon": "skills"
+    },
+    {
+      "id": "mcp",
+      "title": "MCP",
+      "slot": "agent-settings",
+      "icon": "mcp"
+    },
+    {
+      "id": "settings",
+      "title": "Settings",
+      "slot": "agent-settings",
+      "icon": "settings"
+    }
+  ]
 }

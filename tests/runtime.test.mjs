@@ -47,7 +47,11 @@ async function setup(t, { key = 'fixture-normal', getEngine } = {}) {
 test('registers the stable ID, declared features, and MIT manifest with the Studio Agent API', async () => {
   let registration
   let disposed
-  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { agents: { register(definition) {
+  const registeredRpc = new Map()
+  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { rpc: { register(name, handler) {
+    registeredRpc.set(name, handler)
+    return () => registeredRpc.delete(name)
+  } }, agents: { register(definition) {
     registration = definition
     return { dispose() { disposed = true } }
   } } } })
@@ -62,8 +66,20 @@ test('registers the stable ID, declared features, and MIT manifest with the Stud
     assert.equal(typeof registration.management[action], 'function')
   }
   assert.throws(() => registration.management.checkUpdate({ identity: { ...identity, profile: 'another' } }), /account and Profile/)
+  assert.deepEqual(registration.management.settings({ identity }), { viewId: 'skills' })
+  assert.throws(() => registration.management.settings({ identity: { ...identity, profile: 'another' } }), /account and Profile/)
+  assert.deepEqual(manifest.views.map(view => [view.id, view.slot]), [['skills', 'agent-settings'], ['mcp', 'agent-settings'], ['settings', 'agent-settings']])
+  for (const localized of Object.values(manifest.i18n)) assert.deepEqual(Object.keys(localized.views), ['skills', 'mcp', 'settings'])
+  assert.deepEqual([...registeredRpc.keys()], Object.keys(contract.rpc))
+  const signal = new AbortController().signal
+  for (const [name, input] of [['list-skills', null], ['get-mcp', { name: 'example' }], ['get-settings', null]]) {
+    await assert.rejects(registeredRpc.get(name)(input, { identity: { ...identity, userId: 43 }, signal }), /account and Profile/)
+  }
+  await assert.rejects(registeredRpc.get('save-settings')({ content: '{}' }, { identity, signal }), /revision/)
+  await assert.rejects(registeredRpc.get('get-settings')(null, { identity, signal: AbortSignal.abort() }), { name: 'AbortError' })
   assertContracts(contract)
   await cleanup()
+  assert.equal(registeredRpc.size, 0)
   assert.equal(disposed, true)
 })
 

@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Acp, AcpError } from './acp.mjs'
@@ -12,6 +12,8 @@ import { openAcp } from './turn.mjs'
 import manifest from './plugin.json' with { type: 'json' }
 
 const fullId = 'plugin:devin/devin'
+// This upstream icon identifies the native Devin ACP engine in Studio's Agent catalog.
+const agentIcon = 'data:image/svg+xml;base64,' + (await readFile(new URL('./assets/devin-acp-icon.svg', import.meta.url))).toString('base64')
 const ownerOnly = 'Devin CLI is available to the Studio account and Profile that enabled the plugin.'
 const install = 'Install the official Devin CLI on the Studio host and restart the Studio server if its PATH changed.'
 const stopReasons = { end_turn: 'stop', refusal: 'stop', max_tokens: 'length', max_turn_requests: 'tool_limit' }
@@ -161,7 +163,7 @@ export function definitionFor(owner, getEngine = findEngine, manager) {
     remove(run) { checkOwner(run); return manager.remove(run) },
   })
   return {
-    id: manifest.id, name: manifest.name, vendor: 'Cognition', description: manifest.description, agentApiVersion: 1,
+    id: manifest.id, name: manifest.name, vendor: 'Cognition', description: manifest.description, icon: agentIcon, agentApiVersion: 1,
     async getStatus(run) {
       if (!sameOwner(owner, run.identity)) return { installed: false, version: '', error: ownerOnly }
       return manager ? manager.status(run.signal) : engineStatus(await getEngine(), run.signal)

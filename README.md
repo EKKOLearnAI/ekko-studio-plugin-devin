@@ -41,7 +41,9 @@ MCP 使用当前列表的文件版本打开编辑器。原生 CLI 或另一标�
 
 ## 图标来源
 
-插件随附的 `assets/icon.png` 是适配器的原创字母 D 图标。Devin 产品标识和 Cognition 官方品牌素材见 [Devin 品牌页](https://devin.ai/brand)。
+Agent 管理和聊天入口使用 Cognition 提交给 ACP Registry 的 Devin 图标，用于标识由适配器启动的原生 Devin 引擎。原样随包提供 `assets/devin-acp-icon.svg` 和配套的 Apache-2.0 许可证，显示图标无需访问外网。许可证第 6 节保留品牌权利。 [原始图标](https://github.com/agentclientprotocol/registry/blob/624eb7eac1501c060baee4097bc93bd5ffe48424/devin/icon.svg) · [Registry 许可证](https://github.com/agentclientprotocol/registry/blob/624eb7eac1501c060baee4097bc93bd5ffe48424/LICENSE)
+
+插件中心使用适配器的字母 D 图标 `assets/icon.png`。Cognition 官网品牌素材的商业使用须遵照其网站条款。 [Devin 品牌页](https://devin.ai/brand) · [Cognition 网站条款 §3.1](https://cognition.com/legal/website-terms-of-use)
 
 ## 开发与复验
 

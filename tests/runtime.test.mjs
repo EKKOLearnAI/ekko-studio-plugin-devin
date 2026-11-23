@@ -44,7 +44,7 @@ async function setup(t, { key = 'fixture-normal', getEngine } = {}) {
   return { definition, base, session, run, events, wire, controller, paths }
 }
 
-test('registers the stable ID, declared features, and MIT manifest with the Studio Agent API', async () => {
+test('registers the stable ID, upstream icon, and declared features with the Studio Agent API', async () => {
   let registration
   let disposed
   const registeredRpc = new Map()
@@ -58,6 +58,9 @@ test('registers the stable ID, declared features, and MIT manifest with the Stud
   assert.equal(registration.id, manifest.id)
   assert.equal(manifest.license, 'MIT')
   assert.equal(registration.agentApiVersion, 1)
+  const svg = await readFile(new URL('../assets/devin-acp-icon.svg', import.meta.url))
+  assert.equal(registration.icon, 'data:image/svg+xml;base64,' + svg.toString('base64'))
+  assert.equal(manifest.icon, 'assets/icon.png')
   assert.deepEqual(registration.features, { surfaces: ['chat'], streaming: true, resume: false })
   assert.deepEqual(Object.keys(registration.modes), ['global'])
   assert.throws(() => registration.runtime.createSession({ identity, mode: 'scoped' }), /native Global mode/)

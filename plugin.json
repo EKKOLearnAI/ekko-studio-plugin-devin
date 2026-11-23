@@ -1,0 +1,69 @@
+{
+  "id": "devin",
+  "name": "Devin CLI",
+  "description": "Run Devin CLI in Studio through its native ACP interface.",
+  "i18n": {
+    "en": {
+      "name": "Devin CLI",
+      "description": "Run Devin CLI in Studio through its native ACP interface."
+    },
+    "zh": {
+      "name": "Devin CLI",
+      "description": "通过原生 ACP 接口在 Studio 中使用 Devin CLI。"
+    },
+    "zh-TW": {
+      "name": "Devin CLI",
+      "description": "透過原生 ACP 介面在 Studio 中使用 Devin CLI。"
+    },
+    "ja": {
+      "name": "Devin CLI",
+      "description": "ネイティブ ACP インターフェースで Studio から Devin CLI を使えます。"
+    },
+    "ko": {
+      "name": "Devin CLI",
+      "description": "네이티브 ACP 인터페이스를 통해 Studio에서 Devin CLI를 실행합니다."
+    },
+    "fr": {
+      "name": "Devin CLI",
+      "description": "Utilisez Devin CLI dans Studio via son interface ACP native."
+    },
+    "es": {
+      "name": "Devin CLI",
+      "description": "Usa Devin CLI en Studio mediante su interfaz ACP nativa."
+    },
+    "de": {
+      "name": "Devin CLI",
+      "description": "Verwenden Sie Devin CLI in Studio über die native ACP-Schnittstelle."
+    },
+    "pt": {
+      "name": "Devin CLI",
+      "description": "Use a Devin CLI no Studio por meio da interface ACP nativa."
+    },
+    "ru": {
+      "name": "Devin CLI",
+      "description": "Используйте Devin CLI в Studio через его встроенный интерфейс ACP."
+    },
+    "ar": {
+      "name": "Devin CLI",
+      "description": "استخدم Devin CLI في Studio عبر واجهة ACP الأصلية."
+    },
+    "tr": {
+      "name": "Devin CLI",
+      "description": "Devin CLI’yi Studio’da yerel ACP arabirimi üzerinden kullanın."
+    }
+  },
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "server": "server.mjs",
+  "permissions": [
+    "agents"
+  ],
+  "author": {
+    "name": "Ekko Studio"
+  },
+  "repository": "https://github.com/EKKOLearnAI/ekko-studio-plugin-devin",
+  "homepage": "https://docs.devin.ai/cli",
+  "documentation": "https://github.com/EKKOLearnAI/ekko-studio-plugin-devin#install",
+  "license": "MIT",
+  "icon": "assets/icon.png"
+}
